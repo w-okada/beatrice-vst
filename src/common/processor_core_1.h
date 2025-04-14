@@ -67,6 +67,7 @@ class ProcessorCore1 : public ProcessorCoreBase {
                                 double /*morphing weight*/
                                 )      // NOLINT(whitespace/parens)
       -> ErrorCode override;
+  auto GetPastQuantizedPitch() -> int;
 
  private:
   class ConvertWithModelBlockSize {
@@ -87,6 +88,9 @@ class ProcessorCore1 : public ProcessorCoreBase {
   double intonation_intensity_ = 1.0;
   double pitch_correction_ = 0.0;
   int pitch_correction_type_ = 0;
+
+  // 過去のピッチの値を最新1024個ストアする。リングバッファ
+  std::vector<int> past_quantized_pitch_;
 
   resampler::AnyFreqInOut<ConvertWithModelBlockSize> any_freq_in_out_;
 

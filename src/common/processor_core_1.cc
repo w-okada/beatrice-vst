@@ -46,6 +46,7 @@ auto ProcessorCore1::Process(const float* const input, float* const output,
 }
 
 void ProcessorCore1::Process1(const float* const input, float* const output) {
+
   std::array<float, BEATRICE_PHONE_CHANNELS> phone;
   Beatrice20b1_ExtractPhone1(phone_extractor_, input, phone.data(),
                              phone_context_);
@@ -53,8 +54,29 @@ void ProcessorCore1::Process1(const float* const input, float* const output) {
   std::array<float, 4> pitch_feature;
   Beatrice20b1_EstimatePitch1(pitch_estimator_, input, &quantized_pitch,
                               pitch_feature.data(), pitch_context_);
+
+  // quantized_pitchの値をストアする
+  past_quantized_pitch_.push_back(quantized_pitch);
+  // if (past_quantized_pitch_.size() > 200) { // 200個くらいでテスト。0.01sec * 200 = 2sec。
+  if (past_quantized_pitch_.size() > 200) { // 200個くらいでテスト。0.01sec * 200 = 2sec。
+    past_quantized_pitch_.erase(past_quantized_pitch_.begin());
+  }
+  // // past_quantized_pitch_全体を出力
+  // printf("[ProcessorCore1] past_quantized_pitch_: ");
+  // for (auto i = 0; i < past_quantized_pitch_.size(); ++i) {
+  //   printf("%d ", past_quantized_pitch_[i]);
+  // } 
+  // printf("\n");
+
+
   constexpr auto kPitchBinsPerSemitone =
       static_cast<double>(BEATRICE_PITCH_BINS_PER_OCTAVE) / 12.0;
+
+  // // 入力音声のピッチ算出
+  // float source_average_pitch = 69.0 + 12.0 * std::log2(quantized_pitch / 440.0);
+  // source_average_pitch = std::round(source_average_pitch * 8.0) / 8.0;
+  // printf("[Kernel] quantized_pitch: %d, source_average_pitch: %f\n", quantized_pitch, source_average_pitch);
+
   // PitchShift, IntonationIntensity
   auto tmp_quantized_pitch =
       average_source_pitch_ +
@@ -289,4 +311,31 @@ auto ProcessorCore1::SetPitchCorrectionType(const int new_pitch_correction_type)
   return ErrorCode::kSuccess;
 }
 
-}  // namespace beatrice::common
+auto ProcessorCore1::GetPastQuantizedPitch() -> int {
+  // past_quantized_pitch_の平均を出力
+  double sum = 0.0;
+  int valid_count = 0;
+  for (auto i = 0; i < past_quantized_pitch_.size(); ++i) {
+    auto quantized_pitch = past_quantized_pitch_[i];
+    float source_average_pitch = 69.0 + 12.0 * std::log2(quantized_pitch / 440.0);
+    source_average_pitch = std::round(source_average_pitch * 8.0) / 8.0;
+
+
+    if (source_average_pitch > 35 && source_average_pitch < 80) {
+      // # 一般的な音声のピッチのみ収集
+      // # 男性：41番（E2）から57番（A3）
+      // # 女性：57番（A3）から69番（A4）
+      // # 子供：60番（C4）以上の範囲
+      sum += source_average_pitch;
+      valid_count++;
+    }
+  }
+  if (valid_count == 0) {
+    printf("[ProcessorCore1] No valid quantized pitch found. return deafult.\n");
+    return 69;
+  }
+  double average = sum / valid_count;
+  printf("[ProcessorCore1] past_quantized_pitch_average: %f\n", average);
+
+  return static_cast<int>(std::round(average));
+}}  // namespace beatrice::common
