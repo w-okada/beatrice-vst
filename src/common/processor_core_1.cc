@@ -55,12 +55,13 @@ void ProcessorCore1::Process1(const float* const input, float* const output) {
   Beatrice20b1_EstimatePitch1(pitch_estimator_, input, &quantized_pitch,
                               pitch_feature.data(), pitch_context_);
 
-  // quantized_pitchの値をストアする
-  past_quantized_pitch_.push_back(quantized_pitch);
-  // if (past_quantized_pitch_.size() > 200) { // 200個くらいでテスト。0.01sec * 200 = 2sec。
-  if (past_quantized_pitch_.size() > 200) { // 200個くらいでテスト。0.01sec * 200 = 2sec。
-    past_quantized_pitch_.erase(past_quantized_pitch_.begin());
+  if(quantized_pitch > 30) { // マイク入力なしで18が続く？有効な音が入っている判定として30で足切りしておく
+    past_quantized_pitch_.push_back(quantized_pitch);
+    if (past_quantized_pitch_.size() > 200) { // 200個くらいでテスト。0.01sec * 200 = 2sec。
+      past_quantized_pitch_.erase(past_quantized_pitch_.begin());
+    }
   }
+
   // // past_quantized_pitch_全体を出力
   // printf("[ProcessorCore1] past_quantized_pitch_: ");
   // for (auto i = 0; i < past_quantized_pitch_.size(); ++i) {
