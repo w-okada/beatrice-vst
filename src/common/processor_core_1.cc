@@ -332,8 +332,8 @@ auto ProcessorCore1::GetPastQuantizedPitch() -> int {
     }
   }
   if (valid_count == 0) {
-    printf("[ProcessorCore1] No valid quantized pitch found. return deafult.\n");
-    return 69;
+    printf("[ProcessorCore1] No valid quantized pitch found. return deafult.(57, A3)\n");
+    return 57;
   }
   double average = sum / valid_count;
   printf("[ProcessorCore1] past_quantized_pitch_average: %f\n", average);
